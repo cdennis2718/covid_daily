@@ -41,12 +41,12 @@ plotUsa = function(D,label) {
   }
   main_string = paste("Daily ",label," in USA", sep="")
   plot(0:(L-1),daily_new, pch = 18, main = main_string,
-      xlab = "Days Since 01-22-2020", ylab=y_label
+      xlab = "Days Since 1.22.2020", ylab=y_label
   )
-  text(30,max(daily_new) * 0.85, "Copyright 2020",
-    col="blue")
-  text(30,max(daily_new) * 0.8, "Christopher Dennis",
-    col="blue")
+  #text(30,max(daily_new) * 0.85, "Copyright 2020",
+  #  col="blue")
+  #text(30,max(daily_new) * 0.8, "Christopher Dennis",
+  #  col="blue")
   legend("topleft",legend=c("7 Day Average"), col = c("blue"), lty = c(1))
   lines(weekly_rolling, col="blue")
 }
@@ -66,10 +66,9 @@ plotCounty = function(D, State, County.Name, label) {
    for (i in 2:L) {
       these_cases = total_cases[i] - total_cases[i - 1]
       daily_new = c(daily_new, these_cases)
-
    }
 
-   weekly_rolling = filter(daily_new, rep(1/7, 7), sides=2)
+  weekly_rolling = filter(daily_new, rep(1/7, 7), sides=2)
 
   if (label == "Confirmed Cases") {
     y_label = "New Cases"
@@ -84,16 +83,16 @@ plotCounty = function(D, State, County.Name, label) {
                       )
    plot(
       0:(L-1),daily_new, pch = 18, main = main_string,
-      xlab = "Days since 01-22-2020", ylab=y_label
+      xlab = "Days since 1.22.2020", ylab=y_label
    )
    legend(
       "topleft",legend=c("7 Day Average"), 
       col = c("blue"), lty = c(1)
    )
-  text(30,max(daily_new) * 0.85, "Copyright 2020",
-    col="blue")
-  text(30,max(daily_new) * 0.8, "Christopher Dennis",
-    col="blue")
+  #text(30,max(daily_new) * 0.85, "Copyright 2020",
+  #  col="blue")
+  #text(30,max(daily_new) * 0.8, "Christopher Dennis",
+  #  col="blue")
    lines(weekly_rolling, col="blue")
 
 }
@@ -120,17 +119,16 @@ plotState = function(D, State, label) {
   }
   main_string = paste("Daily ", label, " in ", State, sep="")
   plot(0:(L-1),daily_new, pch = 18, main = main_string,
-      xlab = "Days Since 01-22-2020", ylab=y_label
+      xlab = "Days Since 1.22.2020", ylab=y_label
   )
 
   legend("topleft",legend=c("7 Day Average"), col = c("blue"), lty = c(1))
-  text(30,max(daily_new) * 0.85, "Copyright 2020",
-    col="blue")
-  text(30,max(daily_new) * 0.8, "Christopher Dennis",
-    col="blue")
+  #text(30,max(daily_new) * 0.85, "Copyright 2020",
+  #  col="blue")
+  #text(30,max(daily_new) * 0.8, "Christopher Dennis",
+  #  col="blue")
   lines(weekly_rolling, col="blue")
-
-
+ 
 }
 
 
@@ -153,6 +151,8 @@ doPlot = function(D1,D2, State, County.Name, label) {
 
 }
 
+loadInterval = 6*60*60
+lastLoadTime = Sys.time()
 D1 = read.csv("covid_confirmed_usafacts.csv")
 D2 = read.csv("covid_deaths_usafacts.csv")
 names(D2)[2] = "County.Name" #tables have different keys
@@ -164,9 +164,8 @@ cleanD = function(D) {
   return(D)
 }
 
-D1 = cleanD(D1)
-D2 = cleanD(D2)
-
+D1 <- read.csv(url("https://usafactsstatic.blob.core.windows.net/public/data/covid-19/covid_confirmed_usafacts.csv"))
+D2 <- read.csv(url("https://usafactsstatic.blob.core.windows.net/public/data/covid-19/covid_deaths_usafacts.csv"))
 last_index = length(names(D1))
 last_date_string = names(D1)[last_index]
 ldstr_len = nchar(last_date_string)
@@ -188,45 +187,59 @@ ui <- fluidPage(
                  choices = c("Confirmed Cases", "Deaths"),
                  selected = "Confirmed Cases"),
 
-    HTML("Datasets: <a href='https://usafactsstatic.blob.core.windows.net/public/data/covid-19/covid_confirmed_usafacts.csv'>
+    HTML("Source Data: <a href='https://usafactsstatic.blob.core.windows.net/public/data/covid-19/covid_confirmed_usafacts.csv'>
           Confirmed</a> | "),
     HTML("<a href='https://usafactsstatic.blob.core.windows.net/public/data/covid-19/covid_deaths_usafacts.csv'>
         Deaths</a>")
   ),
   mainPanel(
-    p(paste("Plotting data from 1.22.2020 to ", last_date_string, sep="")),
-    plotOutput('confirmed')
-        )
+
+    plotOutput('confirmed'),
+    HTML(paste("Plotted data runs through", last_date_string)),
+    HTML(paste("<br>Last data pull was", lastLoadTime), 'GMT'),
+    HTML(paste("<br>Data is retrieved every", loadInterval/60, "minutes")),
+  )
 )
 server <- function(input, output, session) {
+  
 
-  downloadData = reactiveTimer(600000)
+  observe({
+    # every second this observer checks to see if an interval 
+    # has passed since last data download;
+    # if so, it downloads the data
+    invalidateLater(10000)
+    thisTime = Sys.time()
+    if (thisTime - lastLoadTime > 21600) {
+      lastLoadTime <<- thisTime
+      D1 <<- read.csv(url("https://usafactsstatic.blob.core.windows.net/public/data/covid-19/covid_confirmed_usafacts.csv"))
+      D2 <<- read.csv(url("https://usafactsstatic.blob.core.windows.net/public/data/covid-19/covid_deaths_usafacts.csv"))
+      names(D2)[2] <<- "County.Name" #tables have different keys
+
+      D1 <<- cleanD(D1)
+      D2 <<- cleanD(D2)
+
+      last_index <<- length(names(D1))
+      last_date_string <<- names(D1)[last_index]
+      ldstr_len <<- nchar(last_date_string)
+      last_date_string <<- substr(last_date_string,2,ldstr_len)
+    }
+  }) 
+  
   observe({
     updateSelectInput(
       session, "county", "Select County:",
       choices = c("*",unique(D1$County.Name[D1$State == input$state]))
     )
   })
-  
-  observe({
-    downloadData()
-    D1 <<- read.csv(url("https://usafactsstatic.blob.core.windows.net/public/data/covid-19/covid_confirmed_usafacts.csv"))
-    D2 <<- read.csv(url("https://usafactsstatic.blob.core.windows.net/public/data/covid-19/covid_deaths_usafacts.csv"))
-    names(D2)[2] <<- "County.Name" #tables have different keys
-
-    D1 <<- cleanD(D1)
-    D2 <<- cleanD(D2)
-
-    last_index <<- length(names(D1))
-    last_date_string <<- names(D1)[last_index]
-    ldstr_len <<- nchar(last_date_string)
-    last_date_string <<- substr(last_date_string,2,ldstr_len)
-  })
 
   output$confirmed = renderPlot({
+
     doPlot(D1,D2,input$state,input$county,input$cases_or_deaths)
-  }
-  )
+  })
+  
+
+
+
 }
 
 shinyApp(ui = ui, server = server)
