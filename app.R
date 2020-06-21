@@ -153,8 +153,9 @@ doPlot = function(D1,D2, State, County.Name, label) {
 
 loadInterval = 6*60*60
 lastLoadTime = Sys.time()
-D1 = read.csv("covid_confirmed_usafacts.csv")
-D2 = read.csv("covid_deaths_usafacts.csv")
+D1 <- read.csv(url("https://usafactsstatic.blob.core.windows.net/public/data/covid-19/covid_confirmed_usafacts.csv"))
+D2 <- read.csv(url("https://usafactsstatic.blob.core.windows.net/public/data/covid-19/covid_deaths_usafacts.csv"))
+
 names(D2)[2] = "County.Name" #tables have different keys
 
 cleanD = function(D) {
@@ -164,8 +165,9 @@ cleanD = function(D) {
   return(D)
 }
 
-D1 <- read.csv(url("https://usafactsstatic.blob.core.windows.net/public/data/covid-19/covid_confirmed_usafacts.csv"))
-D2 <- read.csv(url("https://usafactsstatic.blob.core.windows.net/public/data/covid-19/covid_deaths_usafacts.csv"))
+D1 = cleanD(D1)
+D2 = cleanD(D2)
+
 last_index = length(names(D1))
 last_date_string = names(D1)[last_index]
 ldstr_len = nchar(last_date_string)
