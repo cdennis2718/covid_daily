@@ -18,6 +18,58 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+weeklyRolling = function(series) {
+   return( filter(series, rep(1/7,7), sides=2))
+}
+
+
+plotInternational = function(D,location, cases_or_deaths) {
+
+  D = D[D$location == location,]
+
+  if (cases_or_deaths == "Confirmed Cases") {
+    these_data = D$new_cases_per_million
+    main_string = paste("Daily New Cases in",location)
+    ylab_string = "Daily New Cases Per Million"
+  } else {
+    these_data = D$new_deaths_per_million
+    main_string = paste("Daily New Deaths in",location)
+    ylab_string = "Daily New Deaths Per Million"
+  }
+
+
+
+  if (prod(is.na(these_data))) {
+    plot(c(0, 1), c(0, 1), ann = F, bty = 'n', type = 'n', xaxt = 'n', yaxt = 'n')
+    text(x = 0.5, y = 0.5, paste("No data available for", location),cex=2)
+    print("No Data for")
+    print(location)
+    return(NULL)
+  }
+
+
+##### note: this doesn't work exactly right if there are gaps in the date range!
+#### 
+
+  
+  weekly_rolling = weeklyRolling(these_data)
+  
+  these_dates = as.Date(D$date)
+  first_date = min(these_dates) # TODO wear something nice
+  
+  numeric_date = as.numeric(these_dates - first_date)
+
+   
+
+  plot(numeric_date, these_data, pch=18,
+        main = main_string,
+        ylab = ylab_string,
+        xlab = paste("Days since", first_date))
+ 
+  lines(numeric_date, weekly_rolling, type="l", col="blue", lwd=3)
+   
+  legend("topleft",legend=c("7 Day Average"), col = c("blue"), lty = c(1))
+}
 
 plotUsa = function(D,label) {
 
@@ -48,7 +100,7 @@ plotUsa = function(D,label) {
   #text(30,max(daily_new) * 0.8, "Christopher Dennis",
   #  col="blue")
   legend("topleft",legend=c("7 Day Average"), col = c("blue"), lty = c(1))
-  lines(weekly_rolling, col="blue")
+  lines(weekly_rolling, col="blue",lwd=3)
 }
 
 
@@ -93,7 +145,7 @@ plotCounty = function(D, State, County.Name, label) {
   #  col="blue")
   #text(30,max(daily_new) * 0.8, "Christopher Dennis",
   #  col="blue")
-   lines(weekly_rolling, col="blue")
+   lines(weekly_rolling, col="blue",lwd=3)
 
 }
 
@@ -127,7 +179,7 @@ plotState = function(D, State, label) {
   #  col="blue")
   #text(30,max(daily_new) * 0.8, "Christopher Dennis",
   #  col="blue")
-  lines(weekly_rolling, col="blue")
+  lines(weekly_rolling, col="blue",lwd=3)
  
 }
 
@@ -153,8 +205,13 @@ doPlot = function(D1,D2, State, County.Name, label) {
 
 loadInterval = 6*60*60
 lastLoadTime = Sys.time()
-D1 <- read.csv(url("https://usafactsstatic.blob.core.windows.net/public/data/covid-19/covid_confirmed_usafacts.csv"))
-D2 <- read.csv(url("https://usafactsstatic.blob.core.windows.net/public/data/covid-19/covid_deaths_usafacts.csv"))
+D1 = read.csv("covid_confirmed_usafacts.csv")
+D2 = read.csv("covid_deaths_usafacts.csv")
+D3 = read.csv("owid-covid-data.csv")
+#D1 <- read.csv(url("https://usafactsstatic.blob.core.windows.net/public/data/covid-19/covid_confirmed_usafacts.csv"))
+#D2 <- read.csv(url("https://usafactsstatic.blob.core.windows.net/public/data/covid-19/covid_deaths_usafacts.csv"))
+#D3 <- read.csv(url("https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/owid-covid-data.csv"))
+D3$location = as.character(D3$location)
 
 names(D2)[2] = "County.Name" #tables have different keys
 
@@ -173,33 +230,69 @@ last_date_string = names(D1)[last_index]
 ldstr_len = nchar(last_date_string)
 last_date_string = substr(last_date_string,2,ldstr_len)
 
-
 ui <- fluidPage(
   
-  headerPanel('COVID-19: Daily'),
-
-  sidebarPanel(
-    HTML("Copyright 2020 <a href='mailto:cdennis2718@gmail.com'>Christopher Dennis</a>"),
-    HTML("<hr>"),
-    selectInput('state', 'Select State:', 
-      c("*", unique(D1$State)), selected="*"),
-    selectInput('county', 'Select County:', 
-      c("*", unique(D1$County.Name)), selected="*"),
-    radioButtons('cases_or_deaths', 'Data to Plot',
-                 choices = c("Confirmed Cases", "Deaths"),
-                 selected = "Confirmed Cases"),
-
-    HTML("Source Data: <a href='https://usafactsstatic.blob.core.windows.net/public/data/covid-19/covid_confirmed_usafacts.csv'>
-          Confirmed</a> | "),
-    HTML("<a href='https://usafactsstatic.blob.core.windows.net/public/data/covid-19/covid_deaths_usafacts.csv'>
-        Deaths</a>")
+  headerPanel(
+    'COVID-19: Daily'
   ),
-  mainPanel(
+  HTML("<hr>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+       Copyright 2020 <a href='mailto:cdennis2718@gmail.com'>Christopher Dennis</a><hr>"),
+  tabsetPanel(
 
-    plotOutput('confirmed'),
-    HTML(paste("Plotted data runs through", last_date_string)),
-    HTML(paste("<br>Last data pull was", lastLoadTime), 'GMT'),
-    HTML(paste("<br>Data is retrieved every", loadInterval/60, "minutes")),
+    tabPanel(
+      title="US State/County",      
+      sidebarLayout(
+        sidebarPanel(
+
+          HTML("<hr>"),
+          selectInput('state', 'Select State:', 
+            c("*", unique(D1$State)), selected="*"),
+          selectInput('county', 'Select County:', 
+            c("*", unique(D1$County.Name)), selected="*"),
+          radioButtons('county_cases_or_deaths', 'Data to Plot',
+                       choices = c("Confirmed Cases", "Deaths"),
+                       selected = "Confirmed Cases"),
+
+          HTML("Source Data: <a href='https://usafactsstatic.blob.core.windows.net/public/data/covid-19/covid_confirmed_usafacts.csv'>
+                Confirmed</a> | "),
+          HTML("<a href='https://usafactsstatic.blob.core.windows.net/public/data/covid-19/covid_deaths_usafacts.csv'>
+              Deaths</a>")
+        ),
+        mainPanel(
+
+          plotOutput('confirmed_county'),
+          HTML(paste("Plotted data runs through", last_date_string)),
+          HTML(paste("<br>Last data pull was", lastLoadTime), 'GMT')#,
+         # HTML(paste("<br>Data is retrieved every", loadInterval/60, "minutes")),
+        )
+      )
+    ),
+
+    tabPanel(title="International",
+      sidebarLayout(
+        sidebarPanel(
+
+          HTML("<hr>"),
+          selectInput('location', 'Select Location:', 
+            c(unique(as.character(D3$location))), selected="World"),
+
+          radioButtons('international_cases_or_deaths', 'Data to Plot',
+                       choices = c("Confirmed Cases", "Deaths"),
+                       selected = "Confirmed Cases"),
+
+          HTML("Source Data: <a href='https://usafactsstatic.blob.core.windows.net/public/data/covid-19/covid_confirmed_usafacts.csv'>
+                Confirmed</a>")
+        ),
+        mainPanel(
+
+          plotOutput('international'),
+          HTML(paste("Plotted data runs through", last_date_string)),
+          HTML(paste("<br>Last data pull was", lastLoadTime), 'GMT')#,
+         # HTML(paste("<br>Data is retrieved every", loadInterval/60, "minutes")),
+        )
+      )
+    )
+    
   )
 )
 server <- function(input, output, session) {
@@ -215,6 +308,8 @@ server <- function(input, output, session) {
       lastLoadTime <<- thisTime
       D1 <<- read.csv(url("https://usafactsstatic.blob.core.windows.net/public/data/covid-19/covid_confirmed_usafacts.csv"))
       D2 <<- read.csv(url("https://usafactsstatic.blob.core.windows.net/public/data/covid-19/covid_deaths_usafacts.csv"))
+      D3 <<- read.csv(url("https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/owid-covid-data.csv"))
+      D3$location <<- as.character(D3$location)
       names(D2)[2] <<- "County.Name" #tables have different keys
 
       D1 <<- cleanD(D1)
@@ -234,9 +329,13 @@ server <- function(input, output, session) {
     )
   })
 
-  output$confirmed = renderPlot({
+  output$confirmed_county = renderPlot({
 
-    doPlot(D1,D2,input$state,input$county,input$cases_or_deaths)
+    doPlot(D1,D2,input$state,input$county,input$county_cases_or_deaths)
+  })
+
+  output$international = renderPlot({
+    plotInternational(D3, input$location, input$international_cases_or_deaths)
   })
   
 
