@@ -68,7 +68,7 @@ plotInternational = function(D,location, cases_or_deaths) {
  
   lines(numeric_date, weekly_rolling, type="l", col="blue", lwd=3)
    
-  legend("topleft",legend=c("7 Day Average"), col = c("blue"), lty = c(1))
+  legend("topleft",legend=c("7 Day Average"), col = c("blue"), lty = c(1), lwd=3)
 }
 
 plotUsa = function(D,label) {
@@ -99,7 +99,7 @@ plotUsa = function(D,label) {
   #  col="blue")
   #text(30,max(daily_new) * 0.8, "Christopher Dennis",
   #  col="blue")
-  legend("topleft",legend=c("7 Day Average"), col = c("blue"), lty = c(1))
+  legend("topleft",legend=c("7 Day Average"), col = c("blue"), lty = c(1),lwd=3)
   lines(weekly_rolling, col="blue",lwd=3)
 }
 
@@ -139,7 +139,7 @@ plotCounty = function(D, State, County.Name, label) {
    )
    legend(
       "topleft",legend=c("7 Day Average"), 
-      col = c("blue"), lty = c(1)
+      col = c("blue"), lty = c(1), lwd=3
    )
   #text(30,max(daily_new) * 0.85, "Copyright 2020",
   #  col="blue")
@@ -174,7 +174,7 @@ plotState = function(D, State, label) {
       xlab = "Days Since 1.22.2020", ylab=y_label
   )
 
-  legend("topleft",legend=c("7 Day Average"), col = c("blue"), lty = c(1))
+  legend("topleft",legend=c("7 Day Average"), col = c("blue"), lty = c(1), lwd=3)
   #text(30,max(daily_new) * 0.85, "Copyright 2020",
   #  col="blue")
   #text(30,max(daily_new) * 0.8, "Christopher Dennis",
@@ -243,13 +243,11 @@ ui <- fluidPage(
       title="US State/County",      
       sidebarLayout(
         sidebarPanel(
-
-          HTML("<hr>"),
           selectInput('state', 'Select State:', 
             c("*", unique(D1$State)), selected="*"),
           selectInput('county', 'Select County:', 
             c("*", unique(D1$County.Name)), selected="*"),
-          radioButtons('county_cases_or_deaths', 'Data to Plot',
+          radioButtons('county_cases_or_deaths', 'Data to Plot:',
                        choices = c("Confirmed Cases", "Deaths"),
                        selected = "Confirmed Cases"),
 
@@ -271,12 +269,10 @@ ui <- fluidPage(
     tabPanel(title="International",
       sidebarLayout(
         sidebarPanel(
-
-          HTML("<hr>"),
           selectInput('location', 'Select Location:', 
             c(unique(as.character(D3$location))), selected="World"),
 
-          radioButtons('international_cases_or_deaths', 'Data to Plot',
+          radioButtons('international_cases_or_deaths', 'Data to Plot:',
                        choices = c("Confirmed Cases", "Deaths"),
                        selected = "Confirmed Cases"),
 
