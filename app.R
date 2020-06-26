@@ -30,11 +30,11 @@ plotInternational = function(D,location, cases_or_deaths) {
   if (cases_or_deaths == "Confirmed Cases") {
     these_data = D$new_cases_per_million
     main_string = paste("Daily New Cases in",location)
-    ylab_string = "Daily New Cases Per Million"
+    ylab_string = "Daily new cases per million"
   } else {
     these_data = D$new_deaths_per_million
     main_string = paste("Daily New Deaths in",location)
-    ylab_string = "Daily New Deaths Per Million"
+    ylab_string = "Daily new deaths per million"
   }
 
 
@@ -205,12 +205,12 @@ doPlot = function(D1,D2, State, County.Name, label) {
 
 loadInterval = 6*60*60
 lastLoadTime = Sys.time()
-D1 = read.csv("covid_confirmed_usafacts.csv")
-D2 = read.csv("covid_deaths_usafacts.csv")
-D3 = read.csv("owid-covid-data.csv")
-#D1 <- read.csv(url("https://usafactsstatic.blob.core.windows.net/public/data/covid-19/covid_confirmed_usafacts.csv"))
-#D2 <- read.csv(url("https://usafactsstatic.blob.core.windows.net/public/data/covid-19/covid_deaths_usafacts.csv"))
-#D3 <- read.csv(url("https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/owid-covid-data.csv"))
+#D1 = read.csv("covid_confirmed_usafacts.csv")
+#D2 = read.csv("covid_deaths_usafacts.csv")
+#D3 = read.csv("owid-covid-data.csv")
+D1 <- read.csv(url("https://usafactsstatic.blob.core.windows.net/public/data/covid-19/covid_confirmed_usafacts.csv"))
+D2 <- read.csv(url("https://usafactsstatic.blob.core.windows.net/public/data/covid-19/covid_deaths_usafacts.csv"))
+D3 <- read.csv(url("https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/owid-covid-data.csv"))
 D3$location = as.character(D3$location)
 
 names(D2)[2] = "County.Name" #tables have different keys
