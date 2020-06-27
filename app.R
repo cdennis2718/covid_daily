@@ -18,10 +18,85 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-weeklyRolling = function(series) {
-   return( filter(series, rep(1/7,7), sides=2))
+options(stringsAsFactors=FALSE)
+
+loadData = function(deployed=FALSE) {
+  
+  if (deployed) {
+      D1 <<- read.csv(url("https://usafactsstatic.blob.core.windows.net/public/data/covid-19/covid_confirmed_usafacts.csv"))
+      D2 <<- read.csv(url("https://usafactsstatic.blob.core.windows.net/public/data/covid-19/covid_deaths_usafacts.csv"))
+      D3 <<- read.csv(url("https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/owid-covid-data.csv"))
+  } else {
+      D1 <<- read.csv("./covid_confirmed_usafacts.csv")
+      D2 <<- read.csv("./covid_deaths_usafacts.csv")
+      D3 <<- read.csv("./owid-covid-data.csv")
+  }
+
+
+  names(D2)[2] <<- "County.Name" #tables have different keys
+  
+  D1 <<- D1[D1$County.Name != "Statewide Unallocated",]
+  D2 <<- D2[D2$County.Name != "Statewide Unallocated",]
+  
+  last_index <<- length(names(D1))
+  last_date_string <<- names(D1)[last_index]
+  ldstr_len <<- nchar(last_date_string)
+  last_date_string <<- substr(last_date_string,2,ldstr_len)
 }
 
+movingAverage <- function(x, n=7, centered=TRUE) {
+# this function I copied from 
+# http://www.cookbook-r.com/Manipulating_data/Calculating_a_moving_average/
+
+    if (centered) {
+        before <- floor  ((n-1)/2)
+        after  <- ceiling((n-1)/2)
+    } else {
+        before <- n-1
+        after  <- 0
+    }
+
+    # Track the sum and count of number of non-NA items
+    s     <- rep(0, length(x))
+    count <- rep(0, length(x))
+    
+    # Add the centered data 
+    new <- x
+    # Add to count list wherever there isn't a 
+    count <- count + !is.na(new)
+    # Now replace NA_s with 0_s and add to total
+    new[is.na(new)] <- 0
+    s <- s + new
+    
+    # Add the data from before
+    i <- 1
+    while (i <= before) {
+        # This is the vector with offset values to add
+        new   <- c(rep(NA, i), x[1:(length(x)-i)])
+
+        count <- count + !is.na(new)
+        new[is.na(new)] <- 0
+        s <- s + new
+        
+        i <- i+1
+    }
+
+    # Add the data from after
+    i <- 1
+    while (i <= after) {
+        # This is the vector with offset values to add
+        new   <- c(x[(i+1):length(x)], rep(NA, i))
+       
+        count <- count + !is.na(new)
+        new[is.na(new)] <- 0
+        s <- s + new
+        
+        i <- i+1
+    }
+    
+    # return sum divided by count
+    s/count
+}
 
 plotInternational = function(D,location, cases_or_deaths) {
 
@@ -38,7 +113,6 @@ plotInternational = function(D,location, cases_or_deaths) {
   }
 
 
-
   if (prod(is.na(these_data))) {
     plot(c(0, 1), c(0, 1), ann = F, bty = 'n', type = 'n', xaxt = 'n', yaxt = 'n')
     text(x = 0.5, y = 0.5, paste("No data available for", location),cex=2)
@@ -47,19 +121,14 @@ plotInternational = function(D,location, cases_or_deaths) {
     return(NULL)
   }
 
-
-##### note: this doesn't work exactly right if there are gaps in the date range!
-#### 
-
-  
-  weekly_rolling = weeklyRolling(these_data)
+  # movingAverage ignores missing data
+  # e.g. test case Mexico
+  weekly_rolling = movingAverage(these_data)
   
   these_dates = as.Date(D$date)
   first_date = min(these_dates) # TODO wear something nice
   
   numeric_date = as.numeric(these_dates - first_date)
-
-   
 
   plot(numeric_date, these_data, pch=18,
         main = main_string,
@@ -84,7 +153,7 @@ plotUsa = function(D,label) {
     daily_new = c(daily_new, these_cases)
   }
 
-  weekly_rolling = filter(daily_new, rep(1/7, 7), sides=2)
+  weekly_rolling = movingAverage(daily_new)
 
   if (label == "Confirmed Cases") {
     y_label = "New Cases"
@@ -95,33 +164,27 @@ plotUsa = function(D,label) {
   plot(0:(L-1),daily_new, pch = 18, main = main_string,
       xlab = "Days Since 1.22.2020", ylab=y_label
   )
-  #text(30,max(daily_new) * 0.85, "Copyright 2020",
-  #  col="blue")
-  #text(30,max(daily_new) * 0.8, "Christopher Dennis",
-  #  col="blue")
   legend("topleft",legend=c("7 Day Average"), col = c("blue"), lty = c(1),lwd=3)
   lines(weekly_rolling, col="blue",lwd=3)
 }
 
-
 plotCounty = function(D, State, County.Name, label) {
   
-   total_cases = D[D$State == State & 
-                   D$County.Name == County.Name,]
-   total_cases = as.numeric(total_cases)
-   total_cases = total_cases[5:length(total_cases)] 
+  total_cases = D[D$State == State & 
+                  D$County.Name == County.Name,]
+  total_cases = as.numeric(total_cases)
+  total_cases = total_cases[5:length(total_cases)] 
 
-   L = length(total_cases)
+  L = length(total_cases)
 
-   daily_new = c(0)
+  daily_new = c(0)
 
-   for (i in 2:L) {
-      these_cases = total_cases[i] - total_cases[i - 1]
-      daily_new = c(daily_new, these_cases)
-   }
+  for (i in 2:L) {
+     these_cases = total_cases[i] - total_cases[i - 1]
+     daily_new = c(daily_new, these_cases)
+  }
 
-  weekly_rolling = filter(daily_new, rep(1/7, 7), sides=2)
-
+  weekly_rolling = movingAverage(daily_new)
   if (label == "Confirmed Cases") {
     y_label = "New Cases"
   } else {
@@ -141,12 +204,7 @@ plotCounty = function(D, State, County.Name, label) {
       "topleft",legend=c("7 Day Average"), 
       col = c("blue"), lty = c(1), lwd=3
    )
-  #text(30,max(daily_new) * 0.85, "Copyright 2020",
-  #  col="blue")
-  #text(30,max(daily_new) * 0.8, "Christopher Dennis",
-  #  col="blue")
    lines(weekly_rolling, col="blue",lwd=3)
-
 }
 
 plotState = function(D, State, label) {
@@ -163,7 +221,7 @@ plotState = function(D, State, label) {
     daily_new = c(daily_new, these_cases)
   }
 
-  weekly_rolling = filter(daily_new, rep(1/7, 7), sides=2)
+  weekly_rolling = movingAverage(daily_new)
   if (label == "Confirmed Cases") {
     y_label = "New Cases"
   } else {
@@ -175,14 +233,8 @@ plotState = function(D, State, label) {
   )
 
   legend("topleft",legend=c("7 Day Average"), col = c("blue"), lty = c(1), lwd=3)
-  #text(30,max(daily_new) * 0.85, "Copyright 2020",
-  #  col="blue")
-  #text(30,max(daily_new) * 0.8, "Christopher Dennis",
-  #  col="blue")
   lines(weekly_rolling, col="blue",lwd=3)
- 
 }
-
 
 doPlot = function(D1,D2, State, County.Name, label) {
   if (label == "Deaths") {
@@ -200,35 +252,13 @@ doPlot = function(D1,D2, State, County.Name, label) {
   else {
     plotCounty(D, State, County.Name, label)
   }
-
+# wrapper for county / state / US plotting functions
 }
 
 loadInterval = 6*60*60
 lastLoadTime = Sys.time()
-#D1 = read.csv("covid_confirmed_usafacts.csv")
-#D2 = read.csv("covid_deaths_usafacts.csv")
-#D3 = read.csv("owid-covid-data.csv")
-D1 <- read.csv(url("https://usafactsstatic.blob.core.windows.net/public/data/covid-19/covid_confirmed_usafacts.csv"))
-D2 <- read.csv(url("https://usafactsstatic.blob.core.windows.net/public/data/covid-19/covid_deaths_usafacts.csv"))
-D3 <- read.csv(url("https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/owid-covid-data.csv"))
-D3$location = as.character(D3$location)
 
-names(D2)[2] = "County.Name" #tables have different keys
-
-cleanD = function(D) {
-  D = D[D$County.Name != "Statewide Unallocated",]
-  D$State = as.character(D$State)
-  D$County.Name = as.character(D$County.Name)
-  return(D)
-}
-
-D1 = cleanD(D1)
-D2 = cleanD(D2)
-
-last_index = length(names(D1))
-last_date_string = names(D1)[last_index]
-ldstr_len = nchar(last_date_string)
-last_date_string = substr(last_date_string,2,ldstr_len)
+loadData()
 
 ui <- fluidPage(
   
@@ -251,7 +281,7 @@ ui <- fluidPage(
                        choices = c("Confirmed Cases", "Deaths"),
                        selected = "Confirmed Cases"),
 
-          HTML("Source Data: <a href='https://usafactsstatic.blob.core.windows.net/public/data/covid-19/covid_confirmed_usafacts.csv'>
+          HTML("Source Data: <a href='https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/owid-covid-data.csv'>
                 Confirmed</a> | "),
           HTML("<a href='https://usafactsstatic.blob.core.windows.net/public/data/covid-19/covid_deaths_usafacts.csv'>
               Deaths</a>")
@@ -260,8 +290,7 @@ ui <- fluidPage(
 
           plotOutput('confirmed_county'),
           HTML(paste("Plotted data runs through", last_date_string)),
-          HTML(paste("<br>Last data pull was", lastLoadTime), 'GMT')#,
-         # HTML(paste("<br>Data is retrieved every", loadInterval/60, "minutes")),
+          HTML(paste("<br>Last data pull was", lastLoadTime), 'GMT')
         )
       )
     ),
@@ -270,7 +299,7 @@ ui <- fluidPage(
       sidebarLayout(
         sidebarPanel(
           selectInput('location', 'Select Location:', 
-            c(unique(as.character(D3$location))), selected="World"),
+            c(unique(D3$location)), selected="World"),
 
           radioButtons('international_cases_or_deaths', 'Data to Plot:',
                        choices = c("Confirmed Cases", "Deaths"),
@@ -283,38 +312,54 @@ ui <- fluidPage(
 
           plotOutput('international'),
           HTML(paste("Plotted data runs through", last_date_string)),
-          HTML(paste("<br>Last data pull was", lastLoadTime), 'GMT')#,
-         # HTML(paste("<br>Data is retrieved every", loadInterval/60, "minutes")),
+          HTML(paste("<br>Last data pull was", lastLoadTime), 'GMT')
         )
       )
+    ),
+    tabPanel(title="About",
+      HTML("
+        <div style='margin:5% 8% 5% 8%; padding: 2%; width: 80%; background-color:#EEE'><b>COVID-19: Daily</b> is a simple data visualization app that lets you 
+        plot COVID-19 data from different locations.
+        <p>
+        <br>
+        The United States county-level data come from 
+        <a href='https://www.usafacts.com'>www.usafacts.com</a>
+        (<a href='https://usafactsstatic.blob.core.windows.net/public/data/covid-19/covid_confirmed_usafacts.csv'>covid_confirmed_usafacts.csv</a>, 
+        <a href='https://usafactsstatic.blob.core.windows.net/public/data/covid-19/covid_deaths_usafacts.csv'>covid_deaths_usafacts.csv</a>),
+        and the international data come from 
+        <a href='https://www.ourworldindata.org'>
+          www.ourworldindata.org
+        </a>
+         (<a href='https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/owid-covid-data.csv'>owid-covid-data.csv</a>).
+        <p><br>This project is written in <a href='https://www.r-project.org'>R</a> using the
+        <a href='https://shiny.rstudio.com/'>Shiny</a> framework. 
+        
+        The code is on <a href='https://github.com/cdennis2718/covid_daily'>GitHub</a>.
+        <p><br>If you have suggestions, comments, or questions, please email me at <a href='mailto:cdennis2718@gmail.com'>cdennis2718@gmail.com</a>.
+        
+        </div>"
+      )
     )
-    
   )
 )
+
+
 server <- function(input, output, session) {
   
-
   observe({
     # every second this observer checks to see if an interval 
     # has passed since last data download;
     # if so, it downloads the data
+    # data is a few megabytes
+    # unfortunately on shinyapps the app goes to sleep
+    # so data will stil be downloaded on page load
+    # however this prevents it from being downloaded EVERY reload
+
     invalidateLater(10000)
     thisTime = Sys.time()
     if (thisTime - lastLoadTime > 21600) {
       lastLoadTime <<- thisTime
-      D1 <<- read.csv(url("https://usafactsstatic.blob.core.windows.net/public/data/covid-19/covid_confirmed_usafacts.csv"))
-      D2 <<- read.csv(url("https://usafactsstatic.blob.core.windows.net/public/data/covid-19/covid_deaths_usafacts.csv"))
-      D3 <<- read.csv(url("https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/owid-covid-data.csv"))
-      D3$location <<- as.character(D3$location)
-      names(D2)[2] <<- "County.Name" #tables have different keys
-
-      D1 <<- cleanD(D1)
-      D2 <<- cleanD(D2)
-
-      last_index <<- length(names(D1))
-      last_date_string <<- names(D1)[last_index]
-      ldstr_len <<- nchar(last_date_string)
-      last_date_string <<- substr(last_date_string,2,ldstr_len)
+      loadData()
     }
   }) 
   
@@ -333,10 +378,6 @@ server <- function(input, output, session) {
   output$international = renderPlot({
     plotInternational(D3, input$location, input$international_cases_or_deaths)
   })
-  
-
-
-
 }
 
 shinyApp(ui = ui, server = server)
