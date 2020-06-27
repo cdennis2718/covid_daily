@@ -32,12 +32,22 @@ loadData = function(deployed=FALSE) {
       D3 <<- read.csv("./owid-covid-data.csv")
   }
 
-
+  names(D3)[2] <<- "County.Name"
   names(D2)[2] <<- "County.Name" #tables have different keys
   
   D1 <<- D1[D1$County.Name != "Statewide Unallocated",]
   D2 <<- D2[D2$County.Name != "Statewide Unallocated",]
   
+  D1$County.Name = as.character(D1$County.Name)
+  D2$County.Name = as.character(D2$County.Name)
+  
+  ### For some reason, read.csv reads a few integer columns as strings
+  for (i in 5:length(D1)) {
+    D1[,i] <<- as.numeric(D1[,i])
+  }
+  for (i in 5:length(D2)) {
+    D2[,i] <<- as.numeric(D2[,i])
+  } 
   last_index <<- length(names(D1))
   last_date_string <<- names(D1)[last_index]
   ldstr_len <<- nchar(last_date_string)
@@ -47,7 +57,7 @@ loadData = function(deployed=FALSE) {
 movingAverage <- function(x, n=7, centered=TRUE) {
 # this function I copied from 
 # http://www.cookbook-r.com/Manipulating_data/Calculating_a_moving_average/
-
+# had to fix edge values, should rewrite b/c seems to be off center
     if (centered) {
         before <- floor  ((n-1)/2)
         after  <- ceiling((n-1)/2)
@@ -93,10 +103,20 @@ movingAverage <- function(x, n=7, centered=TRUE) {
         
         i <- i+1
     }
-    
-    # return sum divided by count
-    s/count
+     
+    # Drop edges
+    out = s/count
+    L = length(out)
+    drop = c(1:before, (L-after+1):L)
+    out[drop] = NA
+    return(out)
 }
+### above function was misbehaving
+### so I 
+#movingAverage = function(x) {
+#  out = filter(x,rep(1/7,7),sides=2)
+#  return (out)
+#}
 
 plotInternational = function(D,location, cases_or_deaths) {
 
@@ -154,7 +174,8 @@ plotUsa = function(D,label) {
   }
 
   weekly_rolling = movingAverage(daily_new)
-
+  print(length(weekly_rolling))
+  print(length(daily_new))
   if (label == "Confirmed Cases") {
     y_label = "New Cases"
   } else {
@@ -258,6 +279,9 @@ doPlot = function(D1,D2, State, County.Name, label) {
 loadInterval = 6*60*60
 lastLoadTime = Sys.time()
 
+D1 = data.frame()
+D2 = data.frame()
+D3 = data.frame()
 loadData()
 
 ui <- fluidPage(
@@ -331,11 +355,11 @@ ui <- fluidPage(
           www.ourworldindata.org
         </a>
          (<a href='https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/owid-covid-data.csv'>owid-covid-data.csv</a>).
-        <p><br>This project is written in <a href='https://www.r-project.org'>R</a> using the
+        <p>This project is written in <a href='https://www.r-project.org'>R</a> using the
         <a href='https://shiny.rstudio.com/'>Shiny</a> framework. 
         
         The code is on <a href='https://github.com/cdennis2718/covid_daily'>GitHub</a>.
-        <p><br>If you have suggestions, comments, or questions, please email me at <a href='mailto:cdennis2718@gmail.com'>cdennis2718@gmail.com</a>.
+        <p>If you have suggestions, comments, or questions, please email me at <a href='mailto:cdennis2718@gmail.com'>cdennis2718@gmail.com</a>.
         
         </div>"
       )
