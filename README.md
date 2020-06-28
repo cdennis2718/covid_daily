@@ -2,7 +2,7 @@
 R/Shiny dashboard for COVID-19 data plots
 
 
-        <div style='margin:5% 8% 5% 8%; padding: 2%; width: 80%; background-color:#EEE'><b>COVID-19: Daily</b> is a simple data visualization app that lets you 
+<b>COVID-19:</b> Daily is a simple data visualization app that lets you 
         plot COVID-19 data from different locations.
         <p>
         <br>
@@ -21,4 +21,4 @@ R/Shiny dashboard for COVID-19 data plots
         The code is on <a href='https://github.com/cdennis2718/covid_daily'>GitHub</a>.
         <p>If you have suggestions, comments, or questions, please email me at <a href='mailto:cdennis2718@gmail.com'>cdennis2718@gmail.com</a>.
         
-        </div>
+ 
