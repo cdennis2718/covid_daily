@@ -18,9 +18,14 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-options(stringsAsFactors=FALSE)
+options(stringsAsFactors=FALSE) 
 
-loadData = function(deployed=FALSE) {
+loadData = function(deployed=TRUE) {
+  # deployed = TRUE downloads data on first run
+  # after that, it downloads data on page load every so many hours (that option is set)
+  # unfortunately, on shinyapps.io, the app goes to sleep when not in use, so I can't have it
+  # download data automatically at intervals;
+  # if the interval is passed, it still "waits for" a connection.
   
   if (deployed) {
       D1 <<- read.csv(url("https://usafactsstatic.blob.core.windows.net/public/data/covid-19/covid_confirmed_usafacts.csv"))
@@ -57,7 +62,9 @@ loadData = function(deployed=FALSE) {
 movingAverage <- function(x, n=7, centered=TRUE) {
 # this function I copied from 
 # http://www.cookbook-r.com/Manipulating_data/Calculating_a_moving_average/
-# had to fix edge values, should rewrite b/c seems to be off center
+# had to fix edge values
+# Need to take a close look at this to make sure it is behaving properly,
+# However it seems ok (might be shifted off center? hard to eyeball)
     if (centered) {
         before <- floor  ((n-1)/2)
         after  <- ceiling((n-1)/2)
@@ -104,15 +111,15 @@ movingAverage <- function(x, n=7, centered=TRUE) {
         i <- i+1
     }
      
-    # Drop edges
+    # Drop edges 
     out = s/count
     L = length(out)
     drop = c(1:before, (L-after+1):L)
     out[drop] = NA
     return(out)
 }
-### above function was misbehaving
-### so I 
+
+### simplyer moving average function 
 #movingAverage = function(x) {
 #  out = filter(x,rep(1/7,7),sides=2)
 #  return (out)
@@ -172,10 +179,8 @@ plotUsa = function(D,label) {
     these_cases = total_cases[i] - total_cases[i - 1]
     daily_new = c(daily_new, these_cases)
   }
-
+  
   weekly_rolling = movingAverage(daily_new)
-  print(length(weekly_rolling))
-  print(length(daily_new))
   if (label == "Confirmed Cases") {
     y_label = "New Cases"
   } else {
