@@ -1,6 +1,6 @@
 # covid_daily
 
-<h1>An R/Shiny dashboard for COVID-19 data plots</h1>
+<h4>An R/Shiny dashboard for COVID-19 data plots</h4>
 
 
 <b>COVID-19: Daily</b> is a simple data visualization app that lets you 
