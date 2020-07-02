@@ -20,12 +20,9 @@
 
 options(stringsAsFactors=FALSE) 
 
-loadData = function(deployed=TRUE) {
+loadData = function(deployed=FALSE) {
   # deployed = TRUE downloads data on first run
-  # after that, it downloads data on page load every so many hours (that option is set)
-  # unfortunately, on shinyapps.io, the app goes to sleep when not in use, so I can't have it
-  # download data automatically at intervals;
-  # if the interval is passed, it still "waits for" a connection.
+  # after that, it downloads data on page load after so many hours 
   
   if (deployed) {
       D1 <<- read.csv(url("https://usafactsstatic.blob.core.windows.net/public/data/covid-19/covid_confirmed_usafacts.csv"))
@@ -165,6 +162,76 @@ plotInternational = function(D,location, cases_or_deaths) {
   lines(numeric_date, weekly_rolling, type="l", col="blue", lwd=3)
    
   legend("topleft",legend=c("7 Day Average"), col = c("blue"), lty = c(1), lwd=3)
+}
+
+plotMultinational = function(D,location1, location2, cases_or_deaths) {
+
+   D1 = D[D$location == location1,]
+   D2 = D[D$location == location2,]
+   
+   if (cases_or_deaths == "Confirmed Cases") {
+      loc1_series = D1$new_cases_per_million
+      loc2_series = D2$new_cases_per_million
+      main_string = paste("Daily New Cases in",location1,"and",location2)
+      ylab_string = "Daily new cases per million"
+   } else {
+      loc1_series = D1$new_deaths_per_million
+      loc2_series = D2$new_deaths_per_million
+      main_string = paste("Daily New Deaths in",location1,"and",location2)
+      ylab_string = "Daily new deaths per million"
+   }
+   
+   if (prod(is.na(loc1_series))) {
+      plot(c(0, 1), c(0, 1), ann = F, bty = 'n', type = 'n', xaxt = 'n', yaxt = 'n')
+      text(x = 0.5, y = 0.5, paste("No data available for", location1),cex=1.5)
+      print("No Data for")
+      print(location1)
+      return(NULL)
+   }
+   if (prod(is.na(loc2_series))) {
+      plot(c(0, 1), c(0, 1), ann = F, bty = 'n', type = 'n', xaxt = 'n', yaxt = 'n')
+      text(x = 0.5, y = 0.5, paste("No data available for", location2),cex=1.5)
+      print("No Data for")
+      print(location2)
+      return(NULL)
+   }
+ 
+   # movingAverage ignores missing data
+   # e.g. test case Mexico
+   weekly_rolling1 = movingAverage(loc1_series)
+   weekly_rolling2 = movingAverage(loc2_series)
+
+   loc1_dates = as.Date(D1$date)
+   loc2_dates = as.Date(D2$date)
+   all_dates = sort(unique(c(loc1_dates,loc2_dates)))
+
+   first_date1 = min(loc1_dates) # TODO wear something nice
+   first_date2 = min(loc2_dates)
+   last_date1 = max(loc1_dates)
+   last_date2 = max(loc2_dates)
+   first_date = min(first_date1, first_date2)
+   last_date = max(last_date1,last_date2)
+   
+   numeric_dates1 = as.numeric(loc1_dates - first_date)
+   numeric_dates2 = as.numeric(loc2_dates - first_date)
+   xlim = c(0, as.numeric(last_date) - as.numeric(first_date) + 1)
+   ylim = c(0, 1.1 * max(weekly_rolling1[!is.na(weekly_rolling1)],
+                         weekly_rolling2[!is.na(weekly_rolling2)]))
+
+   plot(numeric_dates1, weekly_rolling1, 
+         type="l", 
+         lwd=3,
+         col="blue",
+         main = main_string,
+         xlim = xlim,
+         ylim = ylim,
+         ylab = ylab_string,
+         xlab = paste("Days since", first_date1))
+
+   lines(numeric_dates2, weekly_rolling2, lwd=3,col="red")
+
+   legend("topleft",legend=c(location1, location2), col = c("blue","red"), lty = c(1), lwd=3)
+
 }
 
 plotUsa = function(D,label) {
@@ -345,27 +412,51 @@ ui <- fluidPage(
         )
       )
     ),
+    tabPanel(title="Country Comparison",
+      sidebarLayout(
+        sidebarPanel(
+          selectInput('comparison_loc1', 'Select Location 1:', 
+            c(unique(D3$location)), selected="United States"),
+          selectInput('comparison_loc2', 'Select Location 2:', 
+            c(unique(D3$location)), selected="Italy"),
+          
+          radioButtons('comparison_cases_or_deaths', 'Data to Plot:',
+                       choices = c("Confirmed Cases", "Deaths"),
+                       selected = "Confirmed Cases"),
+
+          HTML("Source Data: <a href='https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/owid-covid-data.csv'>
+                Confirmed</a>")
+        ),
+        mainPanel(
+
+          plotOutput('comparison'),
+          #HTML(paste("Plotted data runs through", last_date_string)),
+          HTML(paste("<br>Last data pull was", lastLoadTime), 'GMT')
+        )
+      )
+    ), 
     tabPanel(title="About",
       HTML("
-        <div style='margin:5% 8% 5% 8%; padding: 2%; width: 80%; background-color:#EEE'><b>COVID-19: Daily</b> is a simple data visualization app that lets you 
-        plot COVID-19 data from different locations.
-        <p>
-        <br>
-        The United States county-level data come from 
-        <a href='https://www.usafacts.com'>www.usafacts.com</a>
-        (<a href='https://usafactsstatic.blob.core.windows.net/public/data/covid-19/covid_confirmed_usafacts.csv'>covid_confirmed_usafacts.csv</a>, 
-        <a href='https://usafactsstatic.blob.core.windows.net/public/data/covid-19/covid_deaths_usafacts.csv'>covid_deaths_usafacts.csv</a>),
-        and the international data come from 
-        <a href='https://www.ourworldindata.org'>
-          www.ourworldindata.org
-        </a>
-         (<a href='https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/owid-covid-data.csv'>owid-covid-data.csv</a>).
-        <p>This project is written in <a href='https://www.r-project.org'>R</a> using the
-        <a href='https://shiny.rstudio.com/'>Shiny</a> framework. 
-        
-        The code is on <a href='https://github.com/cdennis2718/covid_daily'>GitHub</a>.
-        <p>If you have suggestions, comments, or questions, please email me at <a href='mailto:cdennis2718@gmail.com'>cdennis2718@gmail.com</a>.
-        
+        <div style='margin:5% 8% 5% 8%; padding: 2%; width: 80%; background-color:#EEE'>
+
+          <p><b>COVID-19: Daily</b> is a simple data visualization app that lets you 
+          plot COVID-19 data from different locations.
+          <p>
+          The United States county-level data come from 
+          <a href='https://www.usafacts.com'>www.usafacts.com</a>
+          (<a href='https://usafactsstatic.blob.core.windows.net/public/data/covid-19/covid_confirmed_usafacts.csv'>covid_confirmed_usafacts.csv</a>, 
+          <a href='https://usafactsstatic.blob.core.windows.net/public/data/covid-19/covid_deaths_usafacts.csv'>covid_deaths_usafacts.csv</a>),
+          and the international data come from 
+          <a href='https://www.ourworldindata.org'>
+            www.ourworldindata.org
+          </a>
+           (<a href='https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/owid-covid-data.csv'>owid-covid-data.csv</a>).
+          <p>This project is written in <a href='https://www.r-project.org'>R</a> using the
+          <a href='https://shiny.rstudio.com/'>Shiny</a> framework. 
+          
+          The code is on <a href='https://github.com/cdennis2718/covid_daily'>GitHub</a>.
+          <p>If you have suggestions, comments, or questions, please email me at <a href='mailto:cdennis2718@gmail.com'>cdennis2718@gmail.com</a>.
+          I will be happy to oblige bug fixes and add new features.
         </div>"
       )
     )
@@ -400,13 +491,17 @@ server <- function(input, output, session) {
   })
 
   output$confirmed_county = renderPlot({
-
     doPlot(D1,D2,input$state,input$county,input$county_cases_or_deaths)
   })
 
   output$international = renderPlot({
     plotInternational(D3, input$location, input$international_cases_or_deaths)
   })
+
+  output$comparison = renderPlot({
+    plotMultinational(D3, input$comparison_loc1, input$comparison_loc2, input$comparison_cases_or_deaths)
+  })
+
 }
 
 shinyApp(ui = ui, server = server)
