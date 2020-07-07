@@ -20,7 +20,7 @@
 
 options(stringsAsFactors=FALSE) 
 
-loadData = function(deployed=FALSE) {
+loadData = function(deployed=TRUE) {
   # deployed = TRUE downloads data on first run
   # after that, it downloads data on page load after so many hours 
   
@@ -108,9 +108,11 @@ movingAverage <- function(x, n=7, centered=TRUE) {
         i <- i+1
     }
      
-    # Drop edges 
+
+
     out = s/count
     L = length(out)
+    # Drop edges 
     drop = c(1:before, (L-after+1):L)
     out[drop] = NA
     return(out)
@@ -278,6 +280,7 @@ plotCounty = function(D, State, County.Name, label) {
   }
 
   weekly_rolling = movingAverage(daily_new)
+  print(weekly_rolling)
   if (label == "Confirmed Cases") {
     y_label = "New Cases"
   } else {
@@ -289,15 +292,24 @@ plotCounty = function(D, State, County.Name, label) {
                        State,
                        sep=""
                       )
-   plot(
-      0:(L-1),daily_new, pch = 18, main = main_string,
-      xlab = "Days since 1.22.2020", ylab=y_label
-   )
-   legend(
-      "topleft",legend=c("7 Day Average"), 
-      col = c("blue"), lty = c(1), lwd=3
-   )
-   lines(weekly_rolling, col="blue",lwd=3)
+  plot(
+    0:(L-1), daily_new, 
+    pch = 18, main = main_string,
+    xlab = "Days since 1.22.2020", ylab=y_label
+  )
+  legend(
+    "topleft",legend=c("7 Day Average"), 
+    col = c("blue"), lty = c(1), lwd=3
+  )
+  if (State=="ID" & 
+      County.Name=="Ada County" &
+      label=="Confirmed Cases") {
+    
+  #  arrows(119,119,158,119, col="forestgreen")
+  #  text(133,125,"Chris was here", col="forestgreen")
+
+  }
+  lines(weekly_rolling, col="blue",lwd=3)
 }
 
 plotState = function(D, State, label) {
@@ -348,7 +360,7 @@ doPlot = function(D1,D2, State, County.Name, label) {
 # wrapper for county / state / US plotting functions
 }
 
-loadInterval = 6*60*60
+loadInterval = 4*60*60
 lastLoadTime = Sys.time()
 
 D1 = data.frame()
@@ -467,7 +479,7 @@ ui <- fluidPage(
 server <- function(input, output, session) {
   
   observe({
-    # every second this observer checks to see if an interval 
+    # every minute this observer checks to see if an interval 
     # has passed since last data download;
     # if so, it downloads the data
     # data is a few megabytes
@@ -475,9 +487,10 @@ server <- function(input, output, session) {
     # so data will stil be downloaded on page load
     # however this prevents it from being downloaded EVERY reload
 
-    invalidateLater(10000)
+    invalidateLater(60000)
     thisTime = Sys.time()
-    if (thisTime - lastLoadTime > 21600) {
+
+    if (difftime(thisTime, lastLoadTime,units="sec") > loadInterval) {
       lastLoadTime <<- thisTime
       loadData()
     }
