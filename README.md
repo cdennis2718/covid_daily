@@ -3,8 +3,8 @@
 <h3>An R/Shiny dashboard for COVID-19 data plots</h3>
 
 
-<b>COVID-19: Daily</b> is a simple data visualization app that lets you 
-plot COVID-19 data from different locations.
+<b>COVID-19: Daily</b> is a simple data visualization app that 
+plots COVID-19 data from different locations.
 <p>
 The United States county-level data come from 
 <a href='https://www.usafacts.com'>www.usafacts.com</a>

@@ -244,7 +244,7 @@ plotCounty = function(D, State, County.Name, label) {
                        State,
                        sep=""
                       )
-  plot(
+  plot( 
     1:L, daily_new, 
     pch = 18, main = main_string,
     xlab = "Days since 1.21.2020", ylab=y_label
@@ -360,7 +360,7 @@ ui <- fluidPage(
                        selected = "Confirmed Cases"),
 
           HTML("Source Data: <a href='https://usafactsstatic.blob.core.windows.net/public/data/covid-19/covid_confirmed_usafacts.csv'>
-                Confirmed</a>")
+                All</a>")
         ),
         mainPanel(
 
@@ -383,7 +383,7 @@ ui <- fluidPage(
                        selected = "Confirmed Cases"),
 
           HTML("Source Data: <a href='https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/owid-covid-data.csv'>
-                Confirmed</a>")
+                All</a>")
         ),
         mainPanel(
 

@@ -1,0 +1,10 @@
+name: covid_daily
+title:
+username:
+account: cjdennis
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 2476411
+bundleId: 3777220
+url: https://cjdennis.shinyapps.io/covid_daily/
+when: 1603529632.59314
