@@ -56,73 +56,25 @@ loadData = function(deployed=TRUE) {
   last_date_string <<- substr(last_date_string,2,ldstr_len)
 }
 
-movingAverage <- function(x, n=7, centered=TRUE) {
-# this function I copied from 
-# http://www.cookbook-r.com/Manipulating_data/Calculating_a_moving_average/
-# had to fix edge values
-# Need to take a close look at this to make sure it is behaving properly,
-# However it seems ok (might be shifted off center? hard to eyeball)
-    if (centered) {
-        before <- floor  ((n-1)/2)
-        after  <- ceiling((n-1)/2)
-    } else {
-        before <- n-1
-        after  <- 0
-    }
+movingAverage <- function(x, n=7) {
+  
+  l = length(x)
+  out = rep(NA, l)
+  
+  span = n/2
+  num_back = ceiling(span)
+  num_forward = floor(span)
+  first = num_back
+  last = l - num_forward
 
-    # Track the sum and count of number of non-NA items
-    s     <- rep(0, length(x))
-    count <- rep(0, length(x))
-    
-    # Add the centered data 
-    new <- x
-    # Add to count list wherever there isn't a 
-    count <- count + !is.na(new)
-    # Now replace NA_s with 0_s and add to total
-    new[is.na(new)] <- 0
-    s <- s + new
-    
-    # Add the data from before
-    i <- 1
-    while (i <= before) {
-        # This is the vector with offset values to add
-        new   <- c(rep(NA, i), x[1:(length(x)-i)])
+  for (this in first:last) {
+    these = x[(this-num_back) : (this+num_forward)]
+    out[this] = mean(these) 
+  }
 
-        count <- count + !is.na(new)
-        new[is.na(new)] <- 0
-        s <- s + new
-        
-        i <- i+1
-    }
-
-    # Add the data from after
-    i <- 1
-    while (i <= after) {
-        # This is the vector with offset values to add
-        new   <- c(x[(i+1):length(x)], rep(NA, i))
-       
-        count <- count + !is.na(new)
-        new[is.na(new)] <- 0
-        s <- s + new
-        
-        i <- i+1
-    }
-     
-
-
-    out = s/count
-    L = length(out)
-    # Drop edges 
-    drop = c(1:before, (L-after+1):L)
-    out[drop] = NA
-    return(out)
+  out
 }
 
-### simplyer moving average function 
-#movingAverage = function(x) {
-#  out = filter(x,rep(1/7,7),sides=2)
-#  return (out)
-#}
 
 plotInternational = function(D,location, cases_or_deaths) {
 
@@ -256,8 +208,8 @@ plotUsa = function(D,label) {
     y_label = "Deaths"
   }
   main_string = paste("Daily ",label," in USA", sep="")
-  plot(0:(L-1),daily_new, pch = 18, main = main_string,
-      xlab = "Days Since 1.22.2020", ylab=y_label
+  plot(1:L,daily_new, pch = 18, main = main_string,
+      xlab = "Days Since 1.21.2020", ylab=y_label
   )
   legend("topleft",legend=c("7 Day Average"), col = c("blue"), lty = c(1),lwd=3)
   lines(weekly_rolling, col="blue",lwd=3)
@@ -293,22 +245,15 @@ plotCounty = function(D, State, County.Name, label) {
                        sep=""
                       )
   plot(
-    0:(L-1), daily_new, 
+    1:L, daily_new, 
     pch = 18, main = main_string,
-    xlab = "Days since 1.22.2020", ylab=y_label
+    xlab = "Days since 1.21.2020", ylab=y_label
   )
   legend(
     "topleft",legend=c("7 Day Average"), 
     col = c("blue"), lty = c(1), lwd=3
   )
-  if (State=="ID" & 
-      County.Name=="Ada County" &
-      label=="Confirmed Cases") {
-    
-  #  arrows(119,119,158,119, col="forestgreen")
-  #  text(133,125,"Chris was here", col="forestgreen")
 
-  }
   lines(weekly_rolling, col="blue",lwd=3)
 }
 
@@ -332,9 +277,10 @@ plotState = function(D, State, label) {
   } else {
     y_label = "Deaths"
   }
+
   main_string = paste("Daily ", label, " in ", State, sep="")
-  plot(0:(L-1),daily_new, pch = 18, main = main_string,
-      xlab = "Days Since 1.22.2020", ylab=y_label
+  plot(1:L, daily_new, pch = 18, main = main_string,
+      xlab = "Days Since 1.21.2020", ylab=y_label
   )
 
   legend("topleft",legend=c("7 Day Average"), col = c("blue"), lty = c(1), lwd=3)
@@ -389,7 +335,7 @@ ui <- fluidPage(
                        choices = c("Confirmed Cases", "Deaths"),
                        selected = "Confirmed Cases"),
 
-          HTML("Source Data: <a href='https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/owid-covid-data.csv'>
+          HTML("Source Data: <a href='https://usafactsstatic.blob.core.windows.net/public/data/covid-19/covid_confirmed_usafacts.csv'>
                 Confirmed</a> | "),
           HTML("<a href='https://usafactsstatic.blob.core.windows.net/public/data/covid-19/covid_deaths_usafacts.csv'>
               Deaths</a>")
@@ -407,7 +353,7 @@ ui <- fluidPage(
       sidebarLayout(
         sidebarPanel(
           selectInput('location', 'Select Location:', 
-            c(unique(D3$location)), selected="World"),
+            c(sort(unique(D3$location))), selected="World"),
 
           radioButtons('international_cases_or_deaths', 'Data to Plot:',
                        choices = c("Confirmed Cases", "Deaths"),
@@ -428,9 +374,9 @@ ui <- fluidPage(
       sidebarLayout(
         sidebarPanel(
           selectInput('comparison_loc1', 'Select Location 1:', 
-            c(unique(D3$location)), selected="United States"),
+            c(sort(unique(D3$location))), selected="United States"),
           selectInput('comparison_loc2', 'Select Location 2:', 
-            c(unique(D3$location)), selected="Italy"),
+            c(sort(unique(D3$location))), selected="Italy"),
           
           radioButtons('comparison_cases_or_deaths', 'Data to Plot:',
                        choices = c("Confirmed Cases", "Deaths"),
