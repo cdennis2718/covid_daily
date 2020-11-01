@@ -56,22 +56,16 @@ loadData = function(deployed=TRUE) {
   last_date_string <<- substr(last_date_string,2,ldstr_len)
 }
 
-movingAverage <- function(x, n=7) {
-  
-  l = length(x)
-  out = rep(NA, l)
-  
-  span = n/2
-  num_back = ceiling(span)
-  num_forward = floor(span)
-  first = num_back
-  last = l - num_forward
 
+movingAverage <- function(x, n=7) {
+  out = rep(NA, l = length(x))
+  first = num_back = ceiling(n/2)
+  num_forward = floor(n/2)
+  last = length(x) - num_forward
   for (this in first:last) {
-    these = x[(this-num_back) : (this+num_forward)]
+    these = x[(this - num_back + 1) : (this + num_forward)] 
     out[this] = mean(these) 
   }
-
   out
 }
 
