@@ -19,6 +19,7 @@
 # SOFTWARE.
 
 options(stringsAsFactors=FALSE) 
+library("dplyr")
 
 loadData = function(deployed=TRUE) {
   # deployed = TRUE downloads data on first run
@@ -34,7 +35,7 @@ loadData = function(deployed=TRUE) {
       D3 <<- read.csv("./owid-covid-data.csv")
   }
 
-  names(D3)[2] <<- "County.Name"
+  names(D1)[2] <<- "County.Name"
   names(D2)[2] <<- "County.Name" #tables have different keys
   
   D1 <<- D1[D1$County.Name != "Statewide Unallocated",]
@@ -54,26 +55,113 @@ loadData = function(deployed=TRUE) {
   last_date_string <<- names(D1)[last_index]
   ldstr_len <<- nchar(last_date_string)
   last_date_string <<- substr(last_date_string,2,ldstr_len)
+  D3$date = as.Date(D3$date)
+   EU_locations = c("Austria","Belgium","Bulgaria","Croatia","Cyprus","Czech Republic","Denmark", 
+          "Estonia","Finland","France","Germany","Greece","Hungary","Ireland",
+          "Italy","Latvia","Lithuania","Luxembourg","Malta","Netherlands", 
+          "Poland","Portugal","Romania","Slovakia","Slovenia","Spain","Sweden")
+
+   #unpack relevant EU data
+   EU_cases = D3[D3$location %in% EU_locations,
+                      c("location", "date", "new_cases")]
+   EU_deaths = D3[D3$location %in% EU_locations,
+                      c("location", "date", "new_deaths")]
+
+   EU_pop = D3[D3$location %in% EU_locations,
+               c("location", "population")]
+
+
+   locs = c()
+   pops = c()
+   for (loc in unique(EU_pop$location)) {
+      pop = EU_pop$population[EU_pop$location == loc][1]
+      locs = c(locs, loc)
+      pops = c(pops, pop)
+   }
+   EU_pop = data.frame
+   total_EU_pop = sum(pops)
+   # re-factorize
+   EU_cases$date = as.Date(EU_cases$date)
+   EU_deaths$date = as.Date(EU_deaths$date)
+   EU_cases$location = factor(as.character(EU_cases$location))
+   EU_deaths$location = factor(as.character(EU_deaths$location))
+
+   #Belgium = EU_cases[EU_cases$location=="Belgium",]
+   #France = EU_cases[EU_cases$location=="France",]
+
+   ## split and aggregate
+
+   these_dates = as.Date(unique(D3$date))
+   joined = data.frame(date=these_dates)
+   for (loc in split(EU_cases, EU_cases$location)) {
+      loc = loc[c("date","new_cases")]
+      joined = full_join(joined, loc, by="date",copy=TRUE)
+   }
+   for (colnum in 2:length(joined)) {
+      these = is.na(joined[ , colnum])
+      joined[these,colnum] = 0
+   }
+
+   EU_new_cases = apply(joined[2:length(joined)], 1, sum)
+   EU_new_cases_per_million = EU_new_cases / total_EU_pop * 1E6
+   EU_new_cases_per_million[EU_new_cases_per_million < 0] = 0
+   ### do it again for deaths
+
+   joined = data.frame(date=these_dates)
+   for (loc in split(EU_deaths, EU_deaths$location)) {
+      loc = loc[c("date","new_deaths")]
+      joined = full_join(joined, loc, by="date",copy=TRUE)
+   }
+   for (colnum in 2:length(joined)) {
+      these = is.na(joined[ , colnum])
+      joined[these,colnum] = 0
+   }
+
+   EU_new_deaths = apply(joined[2:length(joined)], 1, sum)
+   EU_new_deaths_per_million = EU_new_deaths / total_EU_pop * 1E6
+   EU_new_deaths_per_million[EU_new_deaths_per_million < 0] = 0
+   # create EU data frame to join to D3
+   dummy_frame = data.frame(matrix(NA, ncol=ncol(D3), nrow=length(EU_new_cases)))
+   names(dummy_frame) = names(D3)
+   dummy_frame$iso_code = "EU"
+   dummy_frame$location = "European Union"
+   dummy_frame$continent = "Europe"
+   dummy_frame$date = as.Date(these_dates)
+   dummy_frame$new_cases = EU_new_cases
+   dummy_frame$new_deaths = EU_new_deaths
+   dummy_frame$new_cases_per_million = EU_new_cases_per_million
+   dummy_frame$new_deaths_per_million = EU_new_deaths_per_million
+   dummy_frame$population = total_EU_pop
+
+   D3 <<- rbind(D3, dummy_frame)
+
 }
 
-
 movingAverage <- function(x, n=7) {
-  out = rep(NA, l = length(x))
-  first = num_back = ceiling(n/2)
-  num_forward = floor(n/2)
-  last = length(x) - num_forward
+  
+  l = length(x)
+  out = rep(NA, l)
+  
+  span = n/2
+  num_back = ceiling(span)
+  num_forward = floor(span)
+  first = num_back
+  last = l - num_forward
+
   for (this in first:last) {
-    these = x[(this - num_back + 1) : (this + num_forward)] 
+    these = x[(this-num_back) : (this+num_forward)]
     out[this] = mean(these) 
   }
+
   out
 }
 
 
-plotInternational = function(D,location, cases_or_deaths) {
+plotInternational = function(D,location,
+                             cases_or_deaths) {
 
-  D = D[D$location == location,]
-
+  D1 = D[D$location == location,]
+  D = D1[order(D1$date),]
   if (cases_or_deaths == "Confirmed Cases") {
     these_data = D$new_cases_per_million
     main_string = paste("Daily New Cases in",location)
@@ -95,10 +183,10 @@ plotInternational = function(D,location, cases_or_deaths) {
 
   # movingAverage ignores missing data
   # e.g. test case Mexico
-  weekly_rolling = movingAverage(these_data)
   
   these_dates = as.Date(D$date)
-  first_date = min(these_dates) # TODO wear something nice
+  weekly_rolling = movingAverage(these_data)
+  first_date = min(these_dates) 
   
   numeric_date = as.numeric(these_dates - first_date)
 
@@ -107,8 +195,7 @@ plotInternational = function(D,location, cases_or_deaths) {
         ylab = ylab_string,
         xlab = paste("Days since", first_date))
  
-  lines(numeric_date, weekly_rolling, type="l", col="blue", lwd=3)
-   
+  lines(numeric_date, weekly_rolling, type="l", col="blue", lwd=3) 
   legend("topleft",legend=c("7 Day Average"), col = c("blue"), lty = c(1), lwd=3)
 }
 
@@ -116,7 +203,9 @@ plotMultinational = function(D,location1, location2, cases_or_deaths) {
 
    D1 = D[D$location == location1,]
    D2 = D[D$location == location2,]
-   
+   D1 = D1[order(D1$date),]
+   D2 = D2[order(D2$date),]
+
    if (cases_or_deaths == "Confirmed Cases") {
       loc1_series = D1$new_cases_per_million
       loc2_series = D2$new_cases_per_million
@@ -297,7 +386,6 @@ doPlot = function(D1,D2, State, County.Name, label) {
   else {
     plotCounty(D, State, County.Name, label)
   }
-# wrapper for county / state / US plotting functions
 }
 
 loadInterval = 4*60*60
@@ -347,7 +435,7 @@ ui <- fluidPage(
       sidebarLayout(
         sidebarPanel(
           selectInput('location', 'Select Location:', 
-            c(sort(unique(D3$location))), selected="World"),
+            c(sort(unique(D3$location))), selected="European Union"),
 
           radioButtons('international_cases_or_deaths', 'Data to Plot:',
                        choices = c("Confirmed Cases", "Deaths"),
@@ -370,7 +458,7 @@ ui <- fluidPage(
           selectInput('comparison_loc1', 'Select Location 1:', 
             c(sort(unique(D3$location))), selected="United States"),
           selectInput('comparison_loc2', 'Select Location 2:', 
-            c(sort(unique(D3$location))), selected="Italy"),
+            c(sort(unique(D3$location))), selected="European Union"),
           
           radioButtons('comparison_cases_or_deaths', 'Data to Plot:',
                        choices = c("Confirmed Cases", "Deaths"),
@@ -408,7 +496,6 @@ ui <- fluidPage(
           
           The code is on <a href='https://github.com/cdennis2718/covid_daily'>GitHub</a>.
           <p>If you have suggestions, comments, or questions, please email me at <a href='mailto:cdennis2718@gmail.com'>cdennis2718@gmail.com</a>.
-          I will be happy to oblige bug fixes and add new features.
         </div>"
       )
     )
