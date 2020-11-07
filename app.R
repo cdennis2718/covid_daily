@@ -149,7 +149,7 @@ movingAverage <- function(x, n=7) {
   last = l - num_forward
 
   for (this in first:last) {
-    these = x[(this-num_back) : (this+num_forward)]
+    these = x[(this-num_back+1) : (this+num_forward)]
     out[this] = mean(these) 
   }
 
