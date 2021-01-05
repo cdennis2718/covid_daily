@@ -171,7 +171,7 @@ plotInternational = function(D,location,
     main_string = paste("Daily New Deaths in",location)
     ylab_string = "Daily new deaths per million"
   }
-
+  these_data = sapply(these_data, function(x) max(x,0))
 
   if (prod(is.na(these_data))) {
     plot(c(0, 1), c(0, 1), ann = F, bty = 'n', type = 'n', xaxt = 'n', yaxt = 'n')
@@ -217,7 +217,8 @@ plotMultinational = function(D,location1, location2, cases_or_deaths) {
       main_string = paste("Daily New Deaths in",location1,"and",location2)
       ylab_string = "Daily new deaths per million"
    }
-   
+   loc1_series = sapply(loc1_series, function(x) max(x,0))
+   loc2_series = sapply(loc2_series, function(x) max(x,0))
    if (prod(is.na(loc1_series))) {
       plot(c(0, 1), c(0, 1), ann = F, bty = 'n', type = 'n', xaxt = 'n', yaxt = 'n')
       text(x = 0.5, y = 0.5, paste("No data available for", location1),cex=1.5)
@@ -280,7 +281,7 @@ plotUsa = function(D,label) {
   daily_new = c(0)
 
   for (i in 2:L) {
-    these_cases = total_cases[i] - total_cases[i - 1]
+    these_cases = max(total_cases[i] - total_cases[i - 1], 0)
     daily_new = c(daily_new, these_cases)
   }
   
@@ -310,7 +311,7 @@ plotCounty = function(D, State, County.Name, label) {
   daily_new = c(0)
 
   for (i in 2:L) {
-     these_cases = total_cases[i] - total_cases[i - 1]
+     these_cases = max(total_cases[i] - total_cases[i - 1], 0)
      daily_new = c(daily_new, these_cases)
   }
 
@@ -350,7 +351,7 @@ plotState = function(D, State, label) {
   daily_new = c(0)
 
   for (i in 2:L) {
-    these_cases = total_cases[i] - total_cases[i - 1]
+    these_cases = max(total_cases[i] - total_cases[i - 1], 0)
     daily_new = c(daily_new, these_cases)
   }
 
