@@ -1,4 +1,4 @@
-# Copyright 2020 Christopher Dennis
+# Copyright 2020, 2021 Christopher Dennis
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -21,7 +21,7 @@
 options(stringsAsFactors=FALSE) 
 library("dplyr")
 
-loadData = function(deployed=TRUE) {
+loadData = function(deployed=FALSE) {
   # deployed = TRUE downloads data on first run
   # after that, it downloads data on page load after so many hours 
   
@@ -137,7 +137,7 @@ loadData = function(deployed=TRUE) {
 
 }
 
-movingAverage <- function(x, n=7) {
+movingAverage <- function(x, n=14) {
   
   l = length(x)
   out = rep(NA, l)
@@ -196,7 +196,7 @@ plotInternational = function(D,location,
         xlab = paste("Days since", first_date))
  
   lines(numeric_date, weekly_rolling, type="l", col="blue", lwd=3) 
-  legend("topleft",legend=c("7 Day Average"), col = c("blue"), lty = c(1), lwd=3)
+  legend("topleft",legend=c("14 Day Average"), col = c("blue"), lty = c(1), lwd=3)
 }
 
 plotMultinational = function(D,location1, location2, cases_or_deaths) {
@@ -253,7 +253,7 @@ plotMultinational = function(D,location1, location2, cases_or_deaths) {
    numeric_dates1 = as.numeric(loc1_dates - first_date)
    numeric_dates2 = as.numeric(loc2_dates - first_date)
    xlim = c(0, as.numeric(last_date) - as.numeric(first_date) + 1)
-   ylim = c(0, 1.1 * max(weekly_rolling1[!is.na(weekly_rolling1)],
+   ylim = c(0, 1.2 * max(weekly_rolling1[!is.na(weekly_rolling1)],
                          weekly_rolling2[!is.na(weekly_rolling2)]))
 
    plot(numeric_dates1, weekly_rolling1, 
@@ -291,11 +291,13 @@ plotUsa = function(D,label) {
   } else {
     y_label = "Deaths"
   }
+  ylim = c(0, 1.2 * max(weekly_rolling[!is.na(weekly_rolling)]))
   main_string = paste("Daily ",label," in USA", sep="")
   plot(1:L,daily_new, pch = 18, main = main_string,
-      xlab = "Days Since 1.21.2020", ylab=y_label
+      xlab = "Days Since 1.21.2020", ylab=y_label,
+      ylim = ylim
   )
-  legend("topleft",legend=c("7 Day Average"), col = c("blue"), lty = c(1),lwd=3)
+  legend("topleft",legend=c("14 Day Average"), col = c("blue"), lty = c(1),lwd=3)
   lines(weekly_rolling, col="blue",lwd=3)
 }
 
@@ -328,13 +330,14 @@ plotCounty = function(D, State, County.Name, label) {
                        State,
                        sep=""
                       )
+  ylim = c(0, 1.2 * max(weekly_rolling[!is.na(weekly_rolling)]))
   plot( 
     1:L, daily_new, 
     pch = 18, main = main_string,
-    xlab = "Days since 1.21.2020", ylab=y_label
+    xlab = "Days since 1.21.2020", ylab=y_label, ylim=ylim
   )
   legend(
-    "topleft",legend=c("7 Day Average"), 
+    "topleft",legend=c("14 Day Average"), 
     col = c("blue"), lty = c(1), lwd=3
   )
 
@@ -363,11 +366,12 @@ plotState = function(D, State, label) {
   }
 
   main_string = paste("Daily ", label, " in ", State, sep="")
+  ylim = c(0, 1.2 * max(weekly_rolling[!is.na(weekly_rolling)]))
   plot(1:L, daily_new, pch = 18, main = main_string,
-      xlab = "Days Since 1.21.2020", ylab=y_label
+      xlab = "Days Since 1.21.2020", ylab=y_label, ylim=ylim
   )
 
-  legend("topleft",legend=c("7 Day Average"), col = c("blue"), lty = c(1), lwd=3)
+  legend("topleft",legend=c("14 Day Average"), col = c("blue"), lty = c(1), lwd=3)
   lines(weekly_rolling, col="blue",lwd=3)
 }
 
@@ -403,7 +407,7 @@ ui <- fluidPage(
     'COVID-19: Daily'
   ),
   HTML("<hr>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-       Copyright 2020 <a href='mailto:cdennis2718@gmail.com'>Christopher Dennis</a><hr>"),
+       Copyright 2020, 2021 <a href='mailto:cdennis2718@gmail.com'>Christopher Dennis</a><hr>"),
   tabsetPanel(
 
     tabPanel(
@@ -426,8 +430,7 @@ ui <- fluidPage(
         mainPanel(
 
           plotOutput('confirmed_county'),
-          HTML(paste("Plotted data runs through", last_date_string)),
-          HTML(paste("<br>Last data pull was", lastLoadTime), 'GMT')
+          HTML(paste("<br>Data are current as of", lastLoadTime), 'GMT')
         )
       )
     ),
@@ -448,8 +451,7 @@ ui <- fluidPage(
         mainPanel(
 
           plotOutput('international'),
-          HTML(paste("Plotted data runs through", last_date_string)),
-          HTML(paste("<br>Last data pull was", lastLoadTime), 'GMT')
+          HTML(paste("<br>Data are current as of", lastLoadTime), 'GMT')
         )
       )
     ),
@@ -472,7 +474,7 @@ ui <- fluidPage(
 
           plotOutput('comparison'),
           #HTML(paste("Plotted data runs through", last_date_string)),
-          HTML(paste("<br>Last data pull was", lastLoadTime), 'GMT')
+          HTML(paste("<br>Data are current as of", lastLoadTime), 'GMT')
         )
       )
     ), 
