@@ -21,7 +21,7 @@
 options(stringsAsFactors=FALSE) 
 library("dplyr")
 
-loadData = function(deployed=FALSE) {
+loadData = function(deployed=TRUE) {
   # deployed = TRUE downloads data on first run
   # after that, it downloads data on page load after so many hours 
   
