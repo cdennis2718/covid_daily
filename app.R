@@ -21,6 +21,18 @@
 options(stringsAsFactors=FALSE) 
 library("dplyr")
 
+
+renderMilestones = function(ylim) {
+  abline(v=332, col="forestgreen")
+  text(x=332 - 10, y=ylim[2] * 0.35, 
+       labels="first public US vacc.", 
+       srt=90, col="forestgreen", cex=1.3)
+  abline(v=483, col="forestgreen")
+  text(x=483 - 10, y=ylim[2] * 0.6, 
+       labels="CDC relaxes mask recomm.", 
+       srt=90, col="forestgreen", cex=1.3)
+}
+
 loadData = function(deployed=TRUE) {
   # deployed = TRUE downloads data on first run
   # after that, it downloads data on page load after so many hours 
@@ -193,7 +205,8 @@ plotInternational = function(D,location,
   plot(numeric_date, these_data, pch=18,
         main = main_string,
         ylab = ylab_string,
-        xlab = paste("Days since", first_date))
+        xlab = paste("Days since", first_date),
+        col = "purple")
  
   lines(numeric_date, weekly_rolling, type="l", col="blue", lwd=3) 
   legend("topleft",legend=c("14 Day Average"), col = c("blue"), lty = c(1), lwd=3)
@@ -243,7 +256,7 @@ plotMultinational = function(D,location1, location2, cases_or_deaths) {
    loc2_dates = as.Date(D2$date)
    all_dates = sort(unique(c(loc1_dates,loc2_dates)))
 
-   first_date1 = min(loc1_dates) # TODO wear something nice
+   first_date1 = min(loc1_dates)
    first_date2 = min(loc2_dates)
    last_date1 = max(loc1_dates)
    last_date2 = max(loc2_dates)
@@ -264,7 +277,8 @@ plotMultinational = function(D,location1, location2, cases_or_deaths) {
          xlim = xlim,
          ylim = ylim,
          ylab = ylab_string,
-         xlab = paste("Days since", first_date1))
+         xlab = paste("Days since", first_date1)
+         )
 
    lines(numeric_dates2, weekly_rolling2, lwd=3,col="red")
 
@@ -295,10 +309,12 @@ plotUsa = function(D,label) {
   main_string = paste("Daily ",label," in USA", sep="")
   plot(1:L,daily_new, pch = 18, main = main_string,
       xlab = "Days Since 1.21.2020", ylab=y_label,
-      ylim = ylim
+      ylim = ylim, col="purple"
   )
   legend("topleft",legend=c("14 Day Average"), col = c("blue"), lty = c(1),lwd=3)
   lines(weekly_rolling, col="blue",lwd=3)
+  
+  renderMilestones(ylim)
 }
 
 plotCounty = function(D, State, County.Name, label) {
@@ -334,7 +350,8 @@ plotCounty = function(D, State, County.Name, label) {
   plot( 
     1:L, daily_new, 
     pch = 18, main = main_string,
-    xlab = "Days since 1.21.2020", ylab=y_label, ylim=ylim
+    xlab = "Days since 1.21.2020", ylab=y_label, ylim=ylim,
+    col="purple"
   )
   legend(
     "topleft",legend=c("14 Day Average"), 
@@ -342,6 +359,8 @@ plotCounty = function(D, State, County.Name, label) {
   )
 
   lines(weekly_rolling, col="blue",lwd=3)
+  
+  renderMilestones(ylim)
 }
 
 plotState = function(D, State, label) {
@@ -368,11 +387,15 @@ plotState = function(D, State, label) {
   main_string = paste("Daily ", label, " in ", State, sep="")
   ylim = c(0, 1.2 * max(weekly_rolling[!is.na(weekly_rolling)]))
   plot(1:L, daily_new, pch = 18, main = main_string,
-      xlab = "Days Since 1.21.2020", ylab=y_label, ylim=ylim
+      xlab = "Days Since 1.21.2020", ylab=y_label, ylim=ylim,
+      col="purple"
   )
 
   legend("topleft",legend=c("14 Day Average"), col = c("blue"), lty = c(1), lwd=3)
   lines(weekly_rolling, col="blue",lwd=3)
+  
+  renderMilestones(ylim)
+  
 }
 
 doPlot = function(D1,D2, State, County.Name, label) {
@@ -391,6 +414,7 @@ doPlot = function(D1,D2, State, County.Name, label) {
   else {
     plotCounty(D, State, County.Name, label)
   }
+  
 }
 
 loadInterval = 4*60*60
